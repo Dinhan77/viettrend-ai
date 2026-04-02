@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VietTrend AI Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #111118;
+  --bg3: #18181f;
+  --card: #1c1c26;
+  --card2: #22222e;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --accent: #ff3c5f;
+  --accent2: #ff6b35;
+  --blue: #4f8ef7;
+  --green: #2ecc8a;
+  --yellow: #f7c948;
+  --purple: #9b5de5;
+  --text: #f0f0f8;
+  --text2: #9090a8;
+  --text3: #5a5a72;
+  --glow: rgba(255,60,95,0.15);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Be Vietnam Pro',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* noise overlay */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.4}
+
+.app{position:relative;z-index:1;display:grid;grid-template-columns:240px 1fr;grid-template-rows:auto 1fr;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{grid-column:1/-1;display:flex;align-items:center;gap:16px;padding:14px 28px;background:rgba(10,10,15,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.brand-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;background:linear-gradient(90deg,#fff,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.brand-sub{font-size:11px;color:var(--text3);margin-left:auto;padding:3px 10px;background:var(--card);border-radius:20px;border:1px solid var(--border)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s ease infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.api-badge{font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(79,142,247,0.12);color:var(--blue);border:1px solid rgba(79,142,247,0.25)}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:20px 0;display:flex;flex-direction:column;gap:2px;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto}
+.nav-section{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;padding:12px 20px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;transition:all 0.15s;border-left:2px solid transparent;font-size:13.5px;color:var(--text2)}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--card);color:var(--text);border-left-color:var(--accent)}
+.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;font-size:10px;padding:2px 7px;border-radius:10px;background:var(--accent);color:#fff;font-weight:600}
+
+/* ── MAIN ── */
+.main{padding:28px;overflow-y:auto;display:flex;flex-direction:column;gap:0}
+.page{display:none;flex-direction:column;gap:20px;animation:fadeIn 0.25s ease}
+.page.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── PAGE HEADER ── */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.page-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--text)}
+.page-desc{font-size:13px;color:var(--text3);margin-top:4px;line-height:1.5}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;border:none;font-family:'Be Vietnam Pro',sans-serif}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 20px rgba(255,60,95,0.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(255,60,95,0.4)}
+.btn-primary:active{transform:none}
+.btn-ghost{background:var(--card);color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{background:var(--card2);color:var(--text)}
+.btn-blue{background:rgba(79,142,247,0.15);color:var(--blue);border:1px solid rgba(79,142,247,0.25)}
+.btn-blue:hover{background:rgba(79,142,247,0.25)}
+.btn-green{background:rgba(46,204,138,0.12);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn:disabled{opacity:0.45;cursor:not-allowed;transform:none !important}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+.card-title{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+/* ── STAT ROW ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:-30px;right:-30px;width:80px;height:80px;border-radius:50%;background:var(--glow);filter:blur(20px)}
+.stat-num{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--text)}
+.stat-label{font-size:11px;color:var(--text3);margin-top:3px}
+.stat-delta{font-size:11px;margin-top:6px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px}
+.stat-delta.up{background:rgba(46,204,138,0.12);color:var(--green)}
+.stat-delta.hot{background:rgba(255,60,95,0.12);color:var(--accent)}
+
+/* ── INFO BANNER ── */
+.info-banner{background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:12px;padding:12px 16px;font-size:13px;color:#8ab4f8;display:flex;gap:10px;align-items:flex-start;line-height:1.5}
+
+/* ── PLATFORM PILLS ── */
+.platform-row{display:flex;gap:8px;flex-wrap:wrap}
+.platform-pill{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:24px;border:1px solid var(--border2);background:var(--card);cursor:pointer;font-size:13px;color:var(--text2);transition:all 0.15s;user-select:none}
+.platform-pill.active{color:#fff;border-color:transparent}
+.platform-pill.tiktok.active{background:linear-gradient(135deg,#010101,#1a1a2e);border-color:#69c9d0;color:#69c9d0}
+.platform-pill.youtube.active{background:linear-gradient(135deg,#1a0000,#2a0000);border-color:#ff0000;color:#ff6060}
+.platform-pill.facebook.active{background:linear-gradient(135deg,#001a3a,#001433);border-color:#1877f2;color:#5b9cf6}
+
+/* ── SEARCH BAR ── */
+.search-row{display:flex;gap:10px}
+.search-input{flex:1;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:10px 16px;font-size:14px;color:var(--text);font-family:'Be Vietnam Pro',sans-serif;outline:none;transition:border-color 0.15s}
+.search-input::placeholder{color:var(--text3)}
+.search-input:focus{border-color:rgba(255,60,95,0.4)}
+
+/* ── TREND LIST ── */
+.trend-grid{display:flex;flex-direction:column;gap:8px}
+.trend-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:14px}
+.trend-card:hover{background:var(--card2);border-color:var(--border2);transform:translateX(3px)}
+.trend-card.selected{border-color:var(--accent);background:rgba(255,60,95,0.06)}
+.trend-rank{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--text3);min-width:28px}
+.trend-rank.top3{color:var(--yellow)}
+.trend-info{flex:1;min-width:0}
+.trend-title{font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trend-meta{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.tag{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.tag-plat{background:var(--card2);color:var(--text3)}
+.tag-views{background:rgba(247,201,72,0.1);color:var(--yellow)}
+.tag-hot{background:rgba(255,60,95,0.12);color:var(--accent)}
+.tag-new{background:rgba(46,204,138,0.1);color:var(--green)}
+.tag-anime{background:rgba(155,93,229,0.12);color:var(--purple)}
+.trend-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ── OUTPUT BOX ── */
+.output-box{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:18px;min-height:120px;font-size:14px;color:var(--text);line-height:1.8;white-space:pre-wrap;font-family:'Be Vietnam Pro',sans-serif}
+.output-box.loading{opacity:0.7}
+.output-placeholder{color:var(--text3);font-style:italic;font-size:13px}
+.skeleton{height:13px;background:var(--card2);border-radius:4px;margin:7px 0;animation:shimmer 1.4s ease infinite}
+.skeleton.w90{width:90%}.skeleton.w75{width:75%}.skeleton.w85{width:85%}.skeleton.w50{width:50%}
+@keyframes shimmer{0%,100%{opacity:0.4}50%{opacity:0.8}}
+
+/* ── NICHE GRID ── */
+.niche-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.niche-btn{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-size:13px;color:var(--text2);transition:all 0.15s;font-family:'Be Vietnam Pro',sans-serif}
+.niche-btn:hover{background:var(--card2);color:var(--text)}
+.niche-btn.active{background:rgba(155,93,229,0.12);color:var(--purple);border-color:rgba(155,93,229,0.3)}
+.niche-icon{font-size:20px;display:block;margin-bottom:4px}
+
+/* ── STEP FLOW ── */
+.step-flow{display:flex;flex-direction:column;gap:10px}
+.step{display:flex;gap:14px;align-items:flex-start}
+.step-num{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:2px}
+.step-content{flex:1}
+.step-title{font-size:14px;font-weight:500;color:var(--text)}
+.step-desc{font-size:12px;color:var(--text3);margin-top:3px}
+.step-connector{width:2px;height:18px;background:var(--border2);margin-left:13px}
+
+/* ── VIDEO CONVERT ── */
+.url-input-area{background:var(--bg3);border:2px dashed var(--border2);border-radius:14px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s}
+.url-input-area:hover,.url-input-area.drag{border-color:var(--accent);background:rgba(255,60,95,0.04)}
+.url-input-area input{width:100%;background:transparent;border:none;outline:none;font-size:14px;color:var(--text);text-align:center;font-family:'Be Vietnam Pro',sans-serif}
+.url-input-area input::placeholder{color:var(--text3)}
+
+/* ── ANIME PREVIEW ── */
+.anime-prompt-box{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;font-size:13px;color:var(--text);line-height:1.7}
+.prompt-section{margin-bottom:12px}
+.prompt-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+.prompt-value{background:var(--card);border-radius:8px;padding:10px 12px;color:var(--text2);font-size:13px;line-height:1.6}
+.tool-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tool-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all 0.15s}
+.tool-card:hover{background:var(--card2);border-color:var(--border2)}
+.tool-card.active{border-color:var(--purple);background:rgba(155,93,229,0.1)}
+.tool-name{font-size:13px;font-weight:500;color:var(--text);margin-top:6px}
+.tool-desc{font-size:11px;color:var(--text3);margin-top:3px}
+.tool-price{font-size:11px;padding:2px 8px;border-radius:20px;display:inline-block;margin-top:6px}
+.price-free{background:rgba(46,204,138,0.1);color:var(--green)}
+.price-paid{background:rgba(247,201,72,0.1);color:var(--yellow)}
+
+/* ── FOOTER STATUS ── */
+.footer-bar{grid-column:1/-1;padding:10px 28px;border-top:1px solid var(--border);display:flex;align-items:center;gap:14px;font-size:11px;color:var(--text3);background:var(--bg2)}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .stat-row{grid-template-columns:repeat(2,1fr)}
+  .niche-grid{grid-template-columns:repeat(2,1fr)}
+  .tool-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+.copy-btn{position:absolute;top:10px;right:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif}
+.output-wrap{position:relative}
+.divider{height:1px;background:var(--border);margin:4px 0}
+.pill-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pill{font-size:12px;padding:4px 12px;border-radius:20px;background:var(--card2);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all 0.15s}
+.pill:hover{border-color:var(--accent);color:var(--accent)}
+.progress-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width 0.5s ease;width:0}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🔥</div>
+    <div class="brand-name">VietTrend AI</div>
+  </div>
+  <div class="status-dot"></div>
+  <span style="font-size:12px;color:var(--text3)">Agent đang hoạt động</span>
+  <div class="top-right">
+    <span class="api-badge">Claude Sonnet 4</span>
+    <span class="brand-sub">GitHub Pages · Free hosting</span>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="nav-section">Tính năng chính</div>
+  <div class="nav-item active" onclick="nav('scan')">
+    <span class="nav-icon">📡</span> Quét Trend
+    <span class="nav-badge">Live</span>
+  </div>
+  <div class="nav-item" onclick="nav('content')">
+    <span class="nav-icon">✍️</span> Gợi ý nội dung
+  </div>
+  <div class="nav-item" onclick="nav('anime')">
+    <span class="nav-icon">🎨</span> Gợi ý Hoạt hình
+  </div>
+  <div class="nav-item" onclick="nav('convert')">
+    <span class="nav-icon">🔄</span> Chuyển → Hoạt hình
+  </div>
+  <div class="divider" style="margin:12px 0"></div>
+  <div class="nav-section">Cài đặt</div>
+  <div class="nav-item" onclick="nav('setup')">
+    <span class="nav-icon">⚙️</span> API & Cấu hình
+  </div>
+  <div class="nav-item" onclick="nav('deploy')">
+    <span class="nav-icon">🚀</span> Deploy miễn phí
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+<!-- ══ PAGE: QUÉT TREND ══ -->
+<div class="page active" id="page-scan">
+  <div class="page-header">
+    <div>
+      <div class="page-title">📡 Quét Trend Tiếng Việt</div>
+      <div class="page-desc">Tự động quét xu hướng video + bài post từ TikTok, YouTube, Facebook theo thời gian thực</div>
+    </div>
+    <button class="btn btn-primary" onclick="runScan()">
+      <span id="scan-spinner"></span> Quét ngay
+    </button>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-num" id="s-total">0</div>
+      <div class="stat-label">Trend phát hiện</div>
+      <div class="stat-delta up" id="s-delta1">↑ hôm nay</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="s-hot">0</div>
+      <div class="stat-label">Đang nóng 🔥</div>
+      <div class="stat-delta hot">tăng nhanh</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="s-views">0M</div>
+      <div class="stat-label">Tổng lượt xem</div>
+      <div class="stat-delta up">↑ hôm nay</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="s-anime">0</div>
+      <div class="stat-label">Phù hợp làm anime</div>
+      <div class="stat-delta" style="background:rgba(155,93,229,0.12);color:var(--purple)">✦ tiềm năng</div>
+    </div>
+  </div>
+
+  <div class="info-banner">
+    <span>ℹ️</span>
+    <span>Agent dùng <strong>Google Trends (pytrends)</strong> + <strong>YouTube Data API (free)</strong> + <strong>Claude AI</strong> để phân tích xu hướng tiếng Việt. Dữ liệu TikTok/Facebook được gợi ý từ AI dựa trên Google Trends Vietnam.</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🎯 Lọc nền tảng & chủ đề</div>
+    <div class="platform-row" id="platform-row">
+      <div class="platform-pill tiktok active" onclick="togglePlatform(this,'tiktok')">
+        <span>🎵</span> TikTok
+      </div>
+      <div class="platform-pill youtube active" onclick="togglePlatform(this,'youtube')">
+        <span>▶️</span> YouTube
+      </div>
+      <div class="platform-pill facebook active" onclick="togglePlatform(this,'facebook')">
+        <span>📘</span> Facebook
+      </div>
+    </div>
+    <div class="search-row" style="margin-top:12px">
+      <input class="search-input" id="kw-scan" placeholder="Từ khóa tùy chọn: ăn vặt, du lịch, crypto, mẹo vặt..."/>
+      <button class="btn btn-ghost" onclick="filterTrends()">Lọc</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔥 Xu hướng đang hot hôm nay <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none;margin-left:6px">Click để chọn & tạo nội dung</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="scan-progress"></div></div>
+    <div id="trend-grid" class="trend-grid" style="margin-top:14px">
+      <div style="color:var(--text3);font-size:13px;text-align:center;padding:30px">Nhấn "Quét ngay" để bắt đầu hoặc chờ kết quả từ AI agent...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE: GỢI Ý NỘI DUNG ══ -->
+<div class="page" id="page-content">
+  <div class="page-header">
+    <div>
+      <div class="page-title">✍️ Gợi ý nội dung</div>
+      <div class="page-desc">AI tạo ý tưởng video, caption, hook, hashtag theo trend đã quét</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-title">📌 Chọn trend muốn làm</div>
+      <input class="search-input" id="content-trend-input" placeholder="Dán trend hoặc mô tả nội dung..." style="width:100%;margin-bottom:10px"/>
+      <div class="card-title" style="margin-top:4px">🎭 Kênh / niche của bạn</div>
+      <div class="niche-grid" id="niche-grid">
+        <div class="niche-btn active" onclick="selNiche(this,'Ẩm thực & ăn vặt')"><span class="niche-icon">🍜</span>Ẩm thực</div>
+        <div class="niche-btn" onclick="selNiche(this,'Du lịch & khám phá')"><span class="niche-icon">🏝️</span>Du lịch</div>
+        <div class="niche-btn" onclick="selNiche(this,'Tài chính & crypto')"><span class="niche-icon">💰</span>Tài chính</div>
+        <div class="niche-btn" onclick="selNiche(this,'Lifestyle & daily vlog')"><span class="niche-icon">🌟</span>Lifestyle</div>
+        <div class="niche-btn" onclick="selNiche(this,'Công nghệ & AI')"><span class="niche-icon">🤖</span>Công nghệ</div>
+        <div class="niche-btn" onclick="selNiche(this,'Giải trí & hài hước')"><span class="niche-icon">😂</span>Giải trí</div>
+      </div>
+      <div class="card-title" style="margin-top:14px">📱 Định dạng output</div>
+      <div class="pill-row">
+        <span class="pill active-pill" onclick="toggleFormat(this,'tiktok_script')">📹 Script TikTok</span>
+        <span class="pill" onclick="toggleFormat(this,'youtube_desc')">▶️ Mô tả YouTube</span>
+        <span class="pill" onclick="toggleFormat(this,'fb_caption')">📘 Caption FB</span>
+        <span class="pill" onclick="toggleFormat(this,'hashtags')">🔖 Hashtag</span>
+        <span class="pill" onclick="toggleFormat(this,'hook')">⚡ Hook ideas</span>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:14px;justify-content:center" onclick="genContent()">
+        ✨ Tạo ý tưởng nội dung
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        📋 Kết quả AI
+        <button class="btn btn-ghost btn-sm" onclick="copyOutput('content-output')">Copy</button>
+      </div>
+      <div class="output-wrap">
+        <div class="output-box" id="content-output">
+          <div class="output-placeholder">Kết quả sẽ xuất hiện ở đây sau khi bạn nhấn "Tạo ý tưởng nội dung"...</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="genContent()">🔄 Tạo lại</button>
+        <button class="btn btn-blue btn-sm" onclick="sendToAnime()">🎨 Chuyển sang Hoạt hình</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE: GỢI Ý HOẠT HÌNH ══ -->
+<div class="page" id="page-anime">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🎨 Gợi ý tạo video hoạt hình</div>
+      <div class="page-desc">AI tạo prompt chi tiết để làm video hoạt hình từ trend — dùng với Kling AI, Runway, Pika Labs</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-title">🎬 Chọn phong cách hoạt hình</div>
+        <div class="tool-grid">
+          <div class="tool-card active" onclick="selStyle(this,'anime_viet')">
+            <span style="font-size:24px">🇻🇳</span>
+            <div class="tool-name">Anime Việt</div>
+            <div class="tool-desc">Nhân vật Á Đông, màu sắc tươi</div>
+          </div>
+          <div class="tool-card" onclick="selStyle(this,'chibi')">
+            <span style="font-size:24px">🎎</span>
+            <div class="tool-name">Chibi cute</div>
+            <div class="tool-desc">Nhân vật chibi dễ thương</div>
+          </div>
+          <div class="tool-card" onclick="selStyle(this,'2d_cartoon')">
+            <span style="font-size:24px">🖌️</span>
+            <div class="tool-name">2D Cartoon</div>
+            <div class="tool-desc">Phong cách hoạt hình 2D</div>
+          </div>
+          <div class="tool-card" onclick="selStyle(this,'motion_graphic')">
+            <span style="font-size:24px">📊</span>
+            <div class="tool-name">Motion Graphic</div>
+            <div class="tool-desc">Đồ họa chuyển động</div>
+          </div>
+          <div class="tool-card" onclick="selStyle(this,'3d_pixar')">
+            <span style="font-size:24px">🎠</span>
+            <div class="tool-name">3D Pixar</div>
+            <div class="tool-desc">Phong cách Pixar/Disney 3D</div>
+          </div>
+          <div class="tool-card" onclick="selStyle(this,'lofi')">
+            <span style="font-size:24px">🌙</span>
+            <div class="tool-name">Lo-fi Aesthetic</div>
+            <div class="tool-desc">Chill, pastel, cozy</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 Nội dung / trend muốn chuyển đổi</div>
+        <textarea class="search-input" id="anime-topic" rows="3" style="width:100%;resize:none" placeholder="Ví dụ: video review quán cà phê view đẹp Đà Lạt, vibe chill, người trẻ..."></textarea>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px;justify-content:center" onclick="genAnimePrompt()">
+          🎨 Tạo prompt hoạt hình
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🛠️ Tool AI tạo video đề xuất</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border-radius:10px">
+            <span style="font-size:20px">🎬</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:500">Kling AI</div>
+              <div style="font-size:11px;color:var(--text3)">Tốt nhất cho anime Á Đông, có free tier</div>
+            </div>
+            <span class="tag tag-new">Free</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border-radius:10px">
+            <span style="font-size:20px">✈️</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:500">Runway Gen-3</div>
+              <div style="font-size:11px;color:var(--text3)">Chất lượng cao, 125 credits free</div>
+            </div>
+            <span class="tag tag-views">$12/tháng</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border-radius:10px">
+            <span style="font-size:20px">🐦</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:500">Pika Labs</div>
+              <div style="font-size:11px;color:var(--text3)">Dễ dùng, phong cách cartoon đẹp</div>
+            </div>
+            <span class="tag tag-new">Free</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="height:fit-content">
+      <div class="card-title" style="justify-content:space-between">
+        ✨ Prompt hoạt hình được tạo
+        <button class="btn btn-ghost btn-sm" onclick="copyOutput('anime-output')">Copy tất cả</button>
+      </div>
+      <div class="output-wrap">
+        <div class="output-box" id="anime-output" style="min-height:320px">
+          <div class="output-placeholder">Prompt chi tiết cho Kling AI / Runway / Pika sẽ xuất hiện ở đây...</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="genAnimePrompt()">🔄 Tạo lại</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyOutput('anime-output')">📋 Copy prompt</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE: CHUYỂN → HOẠT HÌNH ══ -->
+<div class="page" id="page-convert">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🔄 Chuyển video → Hoạt hình</div>
+      <div class="page-desc">Dán link TikTok / YouTube / Facebook → AI phân tích nội dung → Tạo prompt làm video hoạt hình tương tự</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔗 Dán link video</div>
+    <div class="url-input-area" id="url-drop-zone">
+      <div style="font-size:32px;margin-bottom:10px">📎</div>
+      <div style="font-size:14px;color:var(--text2);margin-bottom:12px">Dán link video TikTok, YouTube hoặc Facebook</div>
+      <input class="search-input" id="video-url" placeholder="https://www.tiktok.com/... hoặc https://youtu.be/..." style="max-width:520px;margin:0 auto;text-align:center;background:var(--card)"/>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">Hỗ trợ: TikTok · YouTube · Facebook Reels · Instagram</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px">
+      <div class="card" style="border-color:rgba(105,201,208,0.2)">
+        <div style="font-size:22px;margin-bottom:6px">🎵</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text)">TikTok</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">tiktok.com/@ hoặc vm.tiktok.com</div>
+      </div>
+      <div class="card" style="border-color:rgba(255,96,96,0.2)">
+        <div style="font-size:22px;margin-bottom:6px">▶️</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text)">YouTube</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">youtu.be hoặc youtube.com/watch</div>
+      </div>
+      <div class="card" style="border-color:rgba(91,156,246,0.2)">
+        <div style="font-size:22px;margin-bottom:6px">📘</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text)">Facebook</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">facebook.com/reel hoặc fb.watch</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-title">🎨 Phong cách hoạt hình muốn chuyển sang</div>
+      <div class="niche-grid">
+        <div class="niche-btn active" id="conv-style-btn" onclick="selConvStyle(this,'anime_japanese')"><span class="niche-icon">🇯🇵</span>Anime Nhật</div>
+        <div class="niche-btn" onclick="selConvStyle(this,'anime_viet')"><span class="niche-icon">🇻🇳</span>Anime Việt</div>
+        <div class="niche-btn" onclick="selConvStyle(this,'pixar_3d')"><span class="niche-icon">🎠</span>Pixar 3D</div>
+        <div class="niche-btn" onclick="selConvStyle(this,'chibi')"><span class="niche-icon">🎎</span>Chibi</div>
+        <div class="niche-btn" onclick="selConvStyle(this,'watercolor')"><span class="niche-icon">🎨</span>Watercolor</div>
+        <div class="niche-btn" onclick="selConvStyle(this,'lofi')"><span class="niche-icon">🌙</span>Lo-fi</div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="card-title">🗒️ Mô tả thêm (tùy chọn)</div>
+        <textarea class="search-input" id="convert-extra" rows="2" style="width:100%;resize:none" placeholder="Thêm yêu cầu đặc biệt: nhân vật mặc áo dài, bối cảnh Hà Nội..."></textarea>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:12px;justify-content:center" onclick="convertToAnime()">
+        🔄 Phân tích & Tạo prompt hoạt hình
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        📋 Kết quả phân tích & prompt
+        <button class="btn btn-ghost btn-sm" onclick="copyOutput('convert-output')">Copy</button>
+      </div>
+      <div class="output-box" id="convert-output" style="min-height:280px">
+        <div class="output-placeholder">Dán link video và nhấn nút để AI phân tích nội dung video và tạo prompt hoạt hình chi tiết...</div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="convertToAnime()">🔄 Tạo lại</button>
+        <button class="btn btn-blue btn-sm" onclick="openKling()">🚀 Mở Kling AI</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE: API SETUP ══ -->
+<div class="page" id="page-setup">
+  <div class="page-header">
+    <div>
+      <div class="page-title">⚙️ Cài đặt API</div>
+      <div class="page-desc">Nhập API key để kích hoạt toàn bộ tính năng AI</div>
+    </div>
+  </div>
+  <div style="max-width:580px;display:flex;flex-direction:column;gap:14px">
+    <div class="card">
+      <div class="card-title">🔑 Claude API Key (bắt buộc)</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Lấy tại <a href="https://console.anthropic.com" target="_blank" style="color:var(--blue)">console.anthropic.com</a> · Free $5 credits khi đăng ký</div>
+      <input class="search-input" id="claude-key" type="password" placeholder="sk-ant-..." style="width:100%"/>
+      <button class="btn btn-primary" style="margin-top:10px" onclick="saveKey('claude')">Lưu</button>
+    </div>
+    <div class="card">
+      <div class="card-title">▶️ YouTube Data API (khuyến nghị)</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Lấy tại Google Cloud Console · 10,000 requests/ngày miễn phí</div>
+      <input class="search-input" id="yt-key" type="password" placeholder="AIza..." style="width:100%"/>
+      <button class="btn btn-ghost" style="margin-top:10px" onclick="saveKey('youtube')">Lưu</button>
+    </div>
+    <div class="info-banner">
+      <span>🔒</span>
+      <span>API key chỉ lưu trong <strong>localStorage</strong> trên máy bạn. Không gửi đi đâu ngoài Anthropic API. Không dùng key production để test.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE: DEPLOY ══ -->
+<div class="page" id="page-deploy">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🚀 Deploy website miễn phí</div>
+      <div class="page-desc">Đưa VietTrend AI Agent lên internet trong 5 phút</div>
+    </div>
+  </div>
+  <div style="max-width:620px">
+    <div class="card">
+      <div class="card-title">Cách deploy lên GitHub Pages (miễn phí)</div>
+      <div class="step-flow">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Tải file HTML này về máy</div>
+            <div class="step-desc">Nhấn nút download bên dưới để tải toàn bộ website (1 file duy nhất)</div>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Tạo repo mới trên GitHub</div>
+            <div class="step-desc">Vào github.com → New repository → Đặt tên: <code style="background:var(--card2);padding:1px 5px;border-radius:4px">viettrend-ai</code></div>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Upload file lên GitHub</div>
+            <div class="step-desc">Kéo thả file <code style="background:var(--card2);padding:1px 5px;border-radius:4px">index.html</code> vào repo (đổi tên thành index.html)</div>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">Bật GitHub Pages</div>
+            <div class="step-desc">Settings → Pages → Source: Deploy from branch → main → / (root) → Save</div>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-title">Website live tại: Dinhan77.github.io/viettrend-ai</div>
+            <div class="step-desc">Sau 2-3 phút website sẽ hoạt động. Nhập Claude API key trong phần Cài đặt.</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:18px" onclick="downloadHTML()">⬇️ Tải file HTML về máy</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end main -->
+
+<!-- FOOTER -->
+<div class="footer-bar">
+  <span class="status-dot"></span>
+  <span>VietTrend AI Agent v1.0</span>
+  <span style="margin-left:auto">Built for GitHub Pages · Claude Sonnet 4 · Free hosting</span>
+</div>
+
+</div><!-- end app -->
+
+<script>
+// ── STATE ──
+let selectedPlatforms = new Set(['tiktok','youtube','facebook']);
+let selectedNiche = 'Ẩm thực & ăn vặt';
+let selectedAnimeStyle = 'anime_viet';
+let selectedConvStyle = 'anime_japanese';
+let selectedFormats = new Set(['tiktok_script']);
+let currentTrends = [];
+
+const CLAUDE_API = 'https://api.anthropic.com/v1/messages';
+function getKey(){ return localStorage.getItem('claude_key')||''; }
+
+// Load saved key
+window.addEventListener('load', ()=>{
+  const k = localStorage.getItem('claude_key');
+  if(k) document.getElementById('claude-key').value = k;
+  const yk = localStorage.getItem('yt_key');
+  if(yk) document.getElementById('yt-key').value = yk;
+  runScan();
+});
+
+// ── NAVIGATION ──
+function nav(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const navMap={scan:0,content:1,anime:2,convert:3,setup:4,deploy:5};
+  const items = document.querySelectorAll('.nav-item');
+  if(items[navMap[page]]) items[navMap[page]].classList.add('active');
+}
+
+// ── PLATFORM TOGGLE ──
+function togglePlatform(el, p){
+  el.classList.toggle('active');
+  if(selectedPlatforms.has(p)) selectedPlatforms.delete(p);
+  else selectedPlatforms.add(p);
+}
+
+// ── NICHE SELECT ──
+function selNiche(el, niche){
+  document.querySelectorAll('.niche-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  selectedNiche = niche;
+}
+function selStyle(el, style){
+  el.closest('.tool-grid').querySelectorAll('.tool-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  selectedAnimeStyle = style;
+}
+function selConvStyle(el, style){
+  el.closest('.niche-grid').querySelectorAll('.niche-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  selectedConvStyle = style;
+}
+
+// ── FORMAT PILLS ──
+function toggleFormat(el, fmt){
+  el.classList.toggle('active-pill');
+  if(selectedFormats.has(fmt)) selectedFormats.delete(fmt);
+  else selectedFormats.add(fmt);
+}
+
+// ── CLAUDE API CALL ──
+async function callClaude(prompt){
+  const key = getKey();
+  if(!key){ alert('Vui lòng nhập Claude API key trong mục Cài đặt!'); nav('setup'); return null; }
+  const res = await fetch(CLAUDE_API,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1200, messages:[{role:'user',content:prompt}] })
+  });
+  const data = await res.json();
+  if(data.error) throw new Error(data.error.message);
+  return data.content?.map(c=>c.text||'').join('') || '';
+}
+
+// ── SAMPLE TRENDS (hiển thị khi chưa có API) ──
+const SAMPLE_TRENDS = [
+  {title:'Thử thách mì cay cấp 10 — phản ứng thật',platform:'TikTok',views:'18.4M',hot:true,anime:true,cat:'Ẩm thực'},
+  {title:'Vlog 1 ngày ở Đà Lạt mùa hoa dã quỳ 2025',platform:'YouTube',views:'11.2M',hot:false,anime:true,cat:'Du lịch'},
+  {title:'5 mẹo tiết kiệm tiền lương 7 triệu',platform:'Facebook',views:'8.9M',hot:false,anime:false,cat:'Tài chính'},
+  {title:'Review 10 quán cà phê view núi Đà Lạt',platform:'TikTok',views:'7.6M',hot:true,anime:true,cat:'Ăn uống'},
+  {title:'Cách kiếm tiền từ AI không cần vốn 2025',platform:'YouTube',views:'6.1M',hot:true,anime:false,cat:'Công nghệ'},
+  {title:'Outfit mùa đông không cần mặc dày',platform:'TikTok',views:'5.4M',hot:false,anime:true,cat:'Thời trang'},
+  {title:'Anh chàng đi xe đạp khắp Việt Nam 80 ngày',platform:'YouTube',views:'4.9M',hot:false,anime:true,cat:'Du lịch'},
+  {title:'Công thức bánh mì thịt nướng siêu ngon',platform:'Facebook',views:'4.2M',hot:false,anime:false,cat:'Ẩm thực'},
+];
+
+// ── SCAN TRENDS ──
+async function runScan(){
+  const kw = document.getElementById('kw-scan').value;
+  const grid = document.getElementById('trend-grid');
+  const prog = document.getElementById('scan-progress');
+  prog.style.width = '0%';
+  grid.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">⏳ Đang quét xu hướng...</div>';
+  
+  // Animate progress
+  let p = 0; const iv = setInterval(()=>{ p = Math.min(p+8,90); prog.style.width=p+'%'; },120);
+
+  try {
+    const prompt = `Bạn là AI chuyên phân tích xu hướng mạng xã hội Việt Nam.
+H�y liệt kê 8 xu hướng video/bài post đang VIRAL hôm nay trên TikTok, YouTube, Facebook Việt Nam${kw?', chủ đề liên quan: '+kw:''}.
+Trả lời CHÍNH XÁC theo format JSON sau (không có markdown, không giải thích):
+[{"title":"tên trend tiếng Việt","platform":"TikTok/YouTube/Facebook","views":"X.XM","hot":true/false,"anime":true/false,"cat":"danh mục"}]
+hot=true nếu tăng trưởng nhanh trong 24h. anime=true nếu phù hợp làm hoạt hình.`;
+    
+    const raw = await callClaude(prompt);
+    const clean = raw.replace(/```json|```/g,'').trim();
+    currentTrends = JSON.parse(clean);
+  } catch(e) {
+    currentTrends = SAMPLE_TRENDS;
+  }
+
+  clearInterval(iv); prog.style.width = '100%';
+  
+  // Update stats
+  document.getElementById('s-total').textContent = currentTrends.length;
+  document.getElementById('s-hot').textContent = currentTrends.filter(t=>t.hot).length;
+  const totalV = currentTrends.reduce((a,t)=>a+parseFloat(t.views),0);
+  document.getElementById('s-views').textContent = totalV.toFixed(0)+'M';
+  document.getElementById('s-anime').textContent = currentTrends.filter(t=>t.anime).length;
+
+  renderTrends(currentTrends);
+}
+
+function filterTrends(){
+  const kw = document.getElementById('kw-scan').value.toLowerCase();
+  const filtered = kw ? currentTrends.filter(t=>t.title.toLowerCase().includes(kw)||t.cat.toLowerCase().includes(kw)) : currentTrends;
+  renderTrends(filtered.length ? filtered : currentTrends);
+}
+
+function renderTrends(trends){
+  const grid = document.getElementById('trend-grid');
+  grid.innerHTML = '';
+  trends.forEach((t,i)=>{
+    const d = document.createElement('div');
+    d.className = 'trend-card';
+    d.onclick = ()=>{ pickTrend(t,d); };
+    d.innerHTML = `
+      <div class="trend-rank ${i<3?'top3':''}">#${i+1}</div>
+      <div class="trend-info">
+        <div class="trend-title">${t.title}</div>
+        <div class="trend-meta">
+          <span class="tag tag-plat">${t.platform}</span>
+          <span class="tag tag-views">👁 ${t.views} views</span>
+          ${t.hot?'<span class="tag tag-hot">🔥 Hot</span>':''}
+          ${t.anime?'<span class="tag tag-anime">🎨 Anime</span>':''}
+          <span class="tag tag-plat">${t.cat}</span>
+        </div>
+      </div>
+      <div class="trend-actions">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();quickContent('${t.title.replace(/'/g,"\\'")}')">✍️</button>
+        ${t.anime?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();quickAnime('${t.title.replace(/'/g,"\\'")}')">🎨</button>`:''}
+      </div>`;
+    grid.appendChild(d);
+  });
+}
+
+function pickTrend(t, el){
+  document.querySelectorAll('.trend-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('content-trend-input').value = t.title;
+  document.getElementById('anime-topic').value = t.title;
+  nav('content');
+}
+function quickContent(title){ document.getElementById('content-trend-input').value=title; nav('content'); setTimeout(genContent,300); }
+function quickAnime(title){ document.getElementById('anime-topic').value=title; nav('anime'); setTimeout(genAnimePrompt,300); }
+
+// ── GEN CONTENT ──
+async function genContent(){
+  const trend = document.getElementById('content-trend-input').value.trim();
+  if(!trend){ alert('Nhập trend muốn làm nội dung!'); return; }
+  const out = document.getElementById('content-output');
+  out.innerHTML = '<div class="skeleton w90"></div><div class="skeleton w75"></div><div class="skeleton w85"></div><div class="skeleton w50"></div><div class="skeleton w90"></div>';
+  
+  const fmts = [...selectedFormats].join(', ');
+  const prompt = `Bạn là chuyên gia content creator Việt Nam.
+TREND: "${trend}"
+NICHE KÊNH: ${selectedNiche}
+ĐỊNH DẠNG CẦN: ${fmts||'script TikTok, hook, hashtag'}
+
+Tạo nội dung viral tiếng Việt:
+
+🎬 3 Ý TƯỞNG VIDEO NGẮN:
+(Mỗi ý tưởng có: Tiêu đề catchy, Hook 3 giây đầu, Nội dung chính 15-30 giây, CTA)
+
+📝 CAPTION/MÔ TẢ:
+(Viết caption hấp dẫn cho TikTok/YouTube/Facebook)
+
+🔖 HASHTAG (20 hashtag tiếng Việt + English):
+
+💡 MẸO TĂNG VIRAL:
+(3 mẹo cụ thể cho trend này)`;
+
+  try {
+    const result = await callClaude(prompt);
+    out.innerHTML = '';
+    out.textContent = result;
+  } catch(e) {
+    out.textContent = 'Lỗi: '+e.message+'\n\nKiểm tra API key trong mục Cài đặt.';
+  }
+}
+
+// ── GEN ANIME PROMPT ──
+async function genAnimePrompt(){
+  const topic = document.getElementById('anime-topic').value.trim();
+  if(!topic){ alert('Nhập nội dung muốn chuyển thành hoạt hình!'); return; }
+  const out = document.getElementById('anime-output');
+  out.innerHTML = '<div class="skeleton w90"></div><div class="skeleton w80"></div><div class="skeleton w75"></div><div class="skeleton w85"></div><div class="skeleton w50"></div>';
+
+  const styleMap = {anime_viet:'anime style, Vietnamese characters, East Asian aesthetic, vibrant colors',chibi:'chibi cute style, big eyes, small body proportions, kawaii',
+    '2d_cartoon':'2D cartoon animation, flat design, bold outlines, cartoon style','motion_graphic':'motion graphics, clean typography animation, infographic style','3d_pixar':'Pixar/Disney 3D animation style, cinematic quality, expressive characters',lofi:'lo-fi aesthetic, pastel colors, chill atmosphere, soft anime style'};
+
+  const prompt = `Bạn là chuyên gia tạo prompt cho AI video generation (Kling AI, Runway, Pika Labs).
+NỘI DUNG GỐC: "${topic}"
+PHONG CÁCH: ${selectedAnimeStyle} — ${styleMap[selectedAnimeStyle]||'anime style'}
+
+Tạo prompts chi tiết:
+
+🎬 PROMPT CHÍNH (tiếng Anh, cho Kling AI / Runway):
+(Mô tả chi tiết scene, nhân vật, màu sắc, ánh sáng, chuyển động, atmosphere — 100-150 từ)
+
+🎨 NEGATIVE PROMPT:
+(Những gì cần tránh: realistic, ugly, deformed...)
+
+🇻🇳 MÔ TẢ TIẾNG VIỆT:
+(Diễn giải prompt bằng tiếng Việt để dễ hiểu)
+
+🎞️ STORYBOARD (3 cảnh):
+Cảnh 1: [mô tả]
+Cảnh 2: [mô tả]
+Cảnh 3: [mô tả]
+
+⚙️ CÀI ĐẶT ĐỀ XUẤT:
+- Duration: ...
+- Aspect ratio: ...
+- Motion intensity: ...`;
+
+  try {
+    const result = await callClaude(prompt);
+    out.innerHTML = '';
+    out.textContent = result;
+  } catch(e) {
+    out.textContent = 'Lỗi: '+e.message;
+  }
+}
+
+// ── CONVERT TO ANIME ──
+async function convertToAnime(){
+  const url = document.getElementById('video-url').value.trim();
+  const extra = document.getElementById('convert-extra').value.trim();
+  if(!url){ alert('Dán link video vào ô ở trên!'); return; }
+  const out = document.getElementById('convert-output');
+  out.innerHTML = '<div class="skeleton w90"></div><div class="skeleton w80"></div><div class="skeleton w75"></div><div class="skeleton w85"></div><div class="skeleton w60"></div>';
+
+  const platform = url.includes('tiktok')?'TikTok':url.includes('youtu')?'YouTube':url.includes('facebook')||url.includes('fb.')?'Facebook':'video';
+  
+  const styleMap = {anime_japanese:'anime Nhật Bản, cel shading, Kyoto Animation style',anime_viet:'anime phong cách Việt Nam, nhân vật Á Đông, cảnh quan Việt',pixar_3d:'Pixar 3D, Disney animation quality',chibi:'chibi cute, kawaii, pastel',watercolor:'watercolor animation, soft brushstrokes',lofi:'lo-fi aesthetic, muted palette, chill'};
+
+  const prompt = `Bạn là AI chuyên phân tích video mạng xã hội và tạo prompt làm hoạt hình.
+
+LINK VIDEO: ${url}
+NỀN TẢNG: ${platform}
+PHONG CÁCH HOẠT HÌNH MONG MUỐN: ${selectedConvStyle} — ${styleMap[selectedConvStyle]||'anime style'}
+${extra?'YÊU CẦU THÊM: '+extra:''}
+
+Dựa vào URL và nền tảng, hãy:
+
+1. 🔍 PHÂN TÍCH NỘI DUNG SUY LUẬN:
+(Từ URL/platform suy luận loại nội dung likely: ví dụ TikTok food review, YouTube vlog, v.v.)
+
+2. 🎬 PROMPT HOẠT HÌNH CHI TIẾT (tiếng Anh, cho Kling AI):
+(Scene description, characters, Vietnamese cultural elements if relevant, colors, lighting, animation style — 120-150 words)
+
+3. ❌ NEGATIVE PROMPT:
+(Tránh: realistic photo, ugly, low quality...)
+
+4. 🇻🇳 GIẢI THÍCH TIẾNG VIỆT:
+(Mô tả video hoạt hình sẽ trông như thế nào)
+
+5. 🛠️ HƯỚNG DẪN SỬ DỤNG KLING AI:
+(Các bước cụ thể để tạo video này trên klingai.com)
+
+6. ⏱️ TIMELINE ĐỀ XUẤT:
+(Duration, scenes breakdown)`;
+
+  try {
+    const result = await callClaude(prompt);
+    out.innerHTML = '';
+    out.textContent = result;
+  } catch(e) {
+    out.textContent = 'Lỗi: '+e.message;
+  }
+}
+
+// ── UTILS ──
+function copyOutput(id){
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.textContent).then(()=>{
+    const orig = el.style.borderColor;
+    el.style.borderColor='var(--green)';
+    setTimeout(()=>el.style.borderColor=orig,1000);
+  });
+}
+
+function sendToAnime(){
+  const txt = document.getElementById('content-output').textContent;
+  if(txt.includes('placeholder')||txt.length<20) return;
+  document.getElementById('anime-topic').value = document.getElementById('content-trend-input').value;
+  nav('anime');
+}
+
+function saveKey(type){
+  if(type==='claude'){
+    const k=document.getElementById('claude-key').value.trim();
+    if(k){localStorage.setItem('claude_key',k);alert('✅ Đã lưu Claude API key!');}
+  } else {
+    const k=document.getElementById('yt-key').value.trim();
+    if(k){localStorage.setItem('yt_key',k);alert('✅ Đã lưu YouTube API key!');}
+  }
+}
+
+function openKling(){ window.open('https://klingai.com','_blank'); }
+
+function downloadHTML(){
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html],{type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'index.html';
+  a.click();
+}
+
+// Pill active style
+const style = document.createElement('style');
+style.textContent = '.active-pill{background:rgba(255,60,95,0.12)!important;color:var(--accent)!important;border-color:rgba(255,60,95,0.3)!important}';
+document.head.appendChild(style);
+</script>
+</body>
+</html>
