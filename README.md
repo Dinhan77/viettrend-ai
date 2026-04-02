@@ -1,0 +1,2 @@
+# viettrend-ai
+Check trend 
